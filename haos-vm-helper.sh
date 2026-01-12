@@ -549,11 +549,8 @@ if ! qm create "$VMID" \
   exit
 fi
 
-# Allocate small disk for EFI
-if ! pvesm alloc "$STORAGE" "$VMID" "$DISK0" 4M >/dev/null 2>&1; then
-  msg_error "Failed to allocate EFI disk"
-  exit
-fi
+# Create EFI disk using qm set (compatible with Proxmox 8 & 9)
+qm set "$VMID" -efidisk0 "${STORAGE}:4,efitype=4m,pre-enrolled-keys=0"
 
 # Import main disk
 msg_info "Importing disk to storage"
