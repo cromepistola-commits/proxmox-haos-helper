@@ -29,45 +29,16 @@ fi
 GEN_MAC=02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')
 NEXTID=$(pvesh get /cluster/nextid)
 
-# Get HAOS versions using GitHub API
-get_haos_version() {
-  local channel="$1"
-  local url=""
-  
-  if [ "$channel" == "dev" ]; then
-    # For dev channel, use artifacts API
-    url="https://os-artifacts.home-assistant.io/artifact?channel=dev&arch=intel-nuc&type=ova&version=latest"
-    curl -s "$url" | jq -r '.url // empty'
-  else
-    # For stable/beta, use GitHub releases
-    local api_url="https://api.github.com/repos/home-assistant/operating-system/releases"
-    if [ "$channel" == "stable" ]; then
-      curl -s "$api_url/latest" | jq -r '.assets[] | select(.name | test("haos_ova-.*\\.qcow2\\.xz$")) | .browser_download_url'
-    else
-      curl -s "$api_url" | jq -r '.[] | select(.prerelease == true) | .assets[] | select(.name | test("haos_ova-.*\\.qcow2\\.xz$")) | .browser_download_url' | head -1
-    fi
-  fi
-}
+# Hardcoded HAOS 16.3 Information
+STABLE_VER="16.3"
+STABLE_URL="https://github.com/home-assistant/operating-system/releases/download/16.3/haos_ova-16.3.qcow2.xz"
 
-# Get version strings
-get_version_string() {
-  local url="$1"
-  if [ -n "$url" ]; then
-    echo "$url" | grep -o 'haos_ova-[^/]*\.qcow2\.xz' | sed 's/haos_ova-//; s/\.qcow2\.xz//'
-  else
-    echo "unknown"
-  fi
-}
-
-# Fetch URLs for each channel
-STABLE_URL=$(get_haos_version "stable")
-BETA_URL=$(get_haos_version "beta")
-DEV_URL=$(get_haos_version "dev")
-
-# Get version strings for display
-STABLE_VER=$(get_version_string "$STABLE_URL")
-BETA_VER=$(get_version_string "$BETA_URL")
-DEV_VER=$(get_version_string "$DEV_URL")
+# Optional: Set Beta and Dev to the same or leave empty
+# If the script's channel selection uses these, setting them to the stable URL prevents errors.
+BETA_VER="$STABLE_VER"
+BETA_URL="$STABLE_URL"
+DEV_VER="$STABLE_VER"
+DEV_URL="$STABLE_URL"
 
 YW=$(echo "\033[33m")
 BL=$(echo "\033[36m")
@@ -517,7 +488,7 @@ sleep 2
 msg_ok "${CL}${BL}${HAOS_URL}${CL}"
 
 msg_info "Downloading HAOS Disk Image"
-if ! wget -q --show-progress -O "haos_ova-${HAOS_VER}.qcow2.xz" "$HAOS_URL"; then
+if ! wget -q --show-progress --user-agent="Wget/Proxmox" -O "haos_ova-${HAOS_VER}.qcow2.xz" "$HAOS_URL"; then
   msg_error "Failed to download HAOS image"
   exit
 fi
